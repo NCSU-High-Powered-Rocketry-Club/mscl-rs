@@ -1,0 +1,15 @@
+[package]
+name = "mscl-rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+
+name = "mscl_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+byteorder = "1.5.0"
+pyo3 = { version = "0.26.0", features = ["extension-module"] }
+serialport = "4.8.1"
+

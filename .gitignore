@@ -1,0 +1,8 @@
+/target
+
+# For ingesting the codebase into LLM's:
+repomix-output.xml
+
+.vscode
+.idea
+.venv
