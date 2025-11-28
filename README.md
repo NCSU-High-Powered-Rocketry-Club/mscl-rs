@@ -18,11 +18,6 @@ This will eventually be available on PyPI, right now this only works locally wit
 git clone https://github.com/NCSU-High-Powered-Rocketry-Club/mscl_rs.git && cd mscl-rs
 ```
 
-```bash
-cargo build
-maturin develop
-```
-
 ## Example Usage
 
 You will need [uv](https://docs.astral.sh/uv/getting-started/installation/) to run the example.
@@ -31,3 +26,4 @@ You will need [uv](https://docs.astral.sh/uv/getting-started/installation/) to r
 uv run examples/parse_mscl_rs.py
 ```
 
+This will automatically build the rust code and install the package in a virtual environment.
