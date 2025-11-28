@@ -6,10 +6,21 @@ readme = "README.md"
 authors = [
     { name = "Harshil", email = "37377066+harshil21@users.noreply.github.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "maturin>=1.9.6",
-    "msgspec>=0.19.0",
+    "msgspec>=0.20.0",
+]
+
+[tool.uv]
+# Rebuild package when any rust files change
+cache-keys = [{file = "pyproject.toml"}, {file = "Cargo.toml"}, {file = "**/*.rs"}]
+# Uncomment to build rust code in development mode
+config-settings = { build-args = '--profile=dev' }
+
+[dependency-groups]
+dev = [
+    "pyserial",
 ]
 
 [build-system]

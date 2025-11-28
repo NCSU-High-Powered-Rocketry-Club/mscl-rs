@@ -1,7 +1,4 @@
 use pyo3::prelude::*;
-use pyo3::types::PyTuple;
-use pyo3::IntoPyObjectExt;
-use std::sync::Mutex;
 
 mod parser;
 mod structs;
@@ -9,9 +6,44 @@ mod structs;
 use parser::SerialParser;
 use structs::ImuPacket;
 
-#[pyclass]
+#[pyclass(frozen)]
+#[derive(Debug, Clone)]
+pub struct IMUPacket {
+    #[pyo3(get)]
+    pub packet_type: String,
+    #[pyo3(get)]
+    pub timestamp: u128,
+    #[pyo3(get)]
+    pub invalid_fields: Option<String>,
+    #[pyo3(get)]
+    pub scaled_accel: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub scaled_gyro: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub delta_vel: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub delta_theta: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub scaled_ambient_pressure: Option<f32>,
+    #[pyo3(get)]
+    pub est_pressure_alt: Option<f32>,
+    #[pyo3(get)]
+    pub est_orient_quaternion: Option<[f32; 4]>,
+    #[pyo3(get)]
+    pub est_attitude_uncert_quaternion: Option<[f32; 4]>,
+    #[pyo3(get)]
+    pub est_angular_rate: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub est_compensated_accel: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub est_linear_accel: Option<[f32; 3]>,
+    #[pyo3(get)]
+    pub est_gravity_vector: Option<[f32; 3]>,
+}
+
+#[pyclass(unsendable)]
 struct PySerialParser {
-    inner: Mutex<SerialParser>,
+    inner: SerialParser,
 }
 
 #[pymethods]
@@ -21,178 +53,55 @@ impl PySerialParser {
         let timeout_duration = std::time::Duration::from_secs_f64(timeout);
         let inner = SerialParser::new(&port, baudrate, timeout_duration)
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
-        Ok(PySerialParser {
-            inner: Mutex::new(inner),
-        })
+        Ok(PySerialParser { inner })
     }
 
-    fn get_data_packets(slf: &Bound<'_, Self>) -> PyResult<Vec<Py<PyAny>>> {
-        let py = slf.py();
-        let binding = slf.borrow();
-        let mut guard = binding.inner.lock().unwrap();
-        let packets = guard.get_all_packets();
-        drop(guard);
+    fn start(&mut self) {
+        self.inner.start();
+    }
 
+    fn get_data_packets(&mut self) -> PyResult<Vec<IMUPacket>> {
+        let packets = self.inner.get_all_packets();
         let mut py_packets = Vec::with_capacity(packets.len());
 
         for packet in packets {
-            let py_packet = match packet {
-                ImuPacket::Raw(r) => {
-                    let mut elements: Vec<Py<PyAny>> = Vec::new();
-                    
-                    // Add packet type
-                    elements.push("raw".into_py_any(py).unwrap());
-                    
-                    // Add timestamp
-                    elements.push(r.timestamp.into_py_any(py).unwrap());
-                    
-                    // Add invalid_fields
-                    elements.push(r.invalid_fields.into_py_any(py).unwrap());
-                    
-                    // Add accel components (or None for each if missing)
-                    if let Some([x, y, z]) = r.scaled_accel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add gyro components (or None for each if missing)
-                    if let Some([x, y, z]) = r.scaled_gyro {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add delta_vel components (or None for each if missing)
-                    if let Some([x, y, z]) = r.delta_vel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add delta_theta components (or None for each if missing)
-                    if let Some([x, y, z]) = r.delta_theta {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add pressure
-                    elements.push(r.scaled_ambient_pressure.into_py_any(py).unwrap());
-
-                    PyTuple::new(py, elements)
-                        .unwrap()
-                        .into_any()
-                        .unbind()
-                }
-                ImuPacket::Estimated(e) => {
-                    let mut elements: Vec<Py<PyAny>> = Vec::new();
-                    
-                    // Add packet type
-                    elements.push("estimated".into_py_any(py).unwrap());
-                    
-                    // Add timestamp
-                    elements.push(e.timestamp.into_py_any(py).unwrap());
-                    
-                    // Add invalid_fields
-                    elements.push(e.invalid_fields.into_py_any(py).unwrap());
-                    
-                    // Add pressure_alt
-                    elements.push(e.est_pressure_alt.into_py_any(py).unwrap());
-                    
-                    // Add orient_quat components (or None for each if missing)
-                    if let Some([w, x, y, z]) = e.est_orient_quaternion {
-                        elements.push(w.into_py_any(py).unwrap());
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add attitude_uncert_quat components (or None for each if missing)
-                    if let Some([w, x, y, z]) = e.est_attitude_uncert_quaternion {
-                        elements.push(w.into_py_any(py).unwrap());
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add angular_rate components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_angular_rate {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add compensated_accel components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_compensated_accel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add linear_accel components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_linear_accel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add gravity_vector components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_gravity_vector {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-
-                    PyTuple::new(py, elements)
-                        .unwrap()
-                        .into_any()
-                        .unbind()
-                }
+            let imu_packet = match packet {
+                ImuPacket::Raw(r) => IMUPacket {
+                    packet_type: "raw".to_string(),
+                    timestamp: r.timestamp,
+                    invalid_fields: r.invalid_fields,
+                    scaled_accel: r.scaled_accel,
+                    scaled_gyro: r.scaled_gyro,
+                    delta_vel: r.delta_vel,
+                    delta_theta: r.delta_theta,
+                    scaled_ambient_pressure: r.scaled_ambient_pressure,
+                    est_pressure_alt: None,
+                    est_orient_quaternion: None,
+                    est_attitude_uncert_quaternion: None,
+                    est_angular_rate: None,
+                    est_compensated_accel: None,
+                    est_linear_accel: None,
+                    est_gravity_vector: None,
+                },
+                ImuPacket::Estimated(e) => IMUPacket {
+                    packet_type: "estimated".to_string(),
+                    timestamp: e.timestamp,
+                    invalid_fields: e.invalid_fields,
+                    scaled_accel: None,
+                    scaled_gyro: None,
+                    delta_vel: None,
+                    delta_theta: None,
+                    scaled_ambient_pressure: None,
+                    est_pressure_alt: e.est_pressure_alt,
+                    est_orient_quaternion: e.est_orient_quaternion,
+                    est_attitude_uncert_quaternion: e.est_attitude_uncert_quaternion,
+                    est_angular_rate: e.est_angular_rate,
+                    est_compensated_accel: e.est_compensated_accel,
+                    est_linear_accel: e.est_linear_accel,
+                    est_gravity_vector: e.est_gravity_vector,
+                },
             };
-            py_packets.push(py_packet);
+            py_packets.push(imu_packet);
         }
 
         Ok(py_packets)
@@ -202,5 +111,6 @@ impl PySerialParser {
 #[pymodule]
 fn mscl_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySerialParser>()?;
+    m.add_class::<IMUPacket>()?;
     Ok(())
 }
