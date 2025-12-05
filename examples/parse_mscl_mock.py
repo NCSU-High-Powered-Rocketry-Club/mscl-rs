@@ -1,15 +1,19 @@
 import mscl_rs
-import time
 
-mock_parser = mscl_rs.PyMockParser("dataset.bin")
+mock_parser = mscl_rs.MockParser("datasets/500hz_10secs.bin")
 mock_parser.start()
 
 def main():
-    for i in range(50):
+    packets_parsed = 0
+    while mock_parser.is_running():
         packets = mock_parser.get_data_packets()
+        packets_parsed += len(packets)
         if packets:
-            print(packets)
-        time.sleep(0.1)
+            print(f"Packets received: {len(packets)}")
+            print(f"First packet timestamp: {packets[0].timestamp} ns")
+            print(f"First packet: {packets[0]}")
+            print(f"Total packets parsed: {packets_parsed}")
+        # time.sleep(0.1)
 
 if __name__ == "__main__":
     main()

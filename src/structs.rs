@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Default)]
 pub struct RawDataPacket {
@@ -25,12 +26,12 @@ pub struct EstimatedDataPacket {
 }
 
 #[derive(Debug)]
-pub enum ImuPacket {
+pub enum MsclPacket {
     Raw(RawDataPacket),
     Estimated(EstimatedDataPacket),
 }
 
-#[pyclass(frozen, freelist = 20, get_all)]
+#[pyclass(frozen, get_all, freelist = 20)]
 #[derive(Debug, Clone)]
 pub struct IMUPacket {
     pub packet_type: String,
@@ -50,10 +51,10 @@ pub struct IMUPacket {
     pub est_gravity_vector: Option<[f32; 3]>,
 }
 
-impl From<ImuPacket> for IMUPacket {
-    fn from(packet: ImuPacket) -> Self {
+impl From<MsclPacket> for IMUPacket {
+    fn from(packet: MsclPacket) -> Self {
         match packet {
-            ImuPacket::Raw(r) => IMUPacket {
+            MsclPacket::Raw(r) => IMUPacket {
                 packet_type: "raw".to_string(),
                 timestamp: r.timestamp,
                 invalid_fields: r.invalid_fields,
@@ -70,7 +71,7 @@ impl From<ImuPacket> for IMUPacket {
                 est_linear_accel: None,
                 est_gravity_vector: None,
             },
-            ImuPacket::Estimated(e) => IMUPacket {
+            MsclPacket::Estimated(e) => IMUPacket {
                 packet_type: "estimated".to_string(),
                 timestamp: e.timestamp,
                 invalid_fields: e.invalid_fields,
@@ -88,5 +89,32 @@ impl From<ImuPacket> for IMUPacket {
                 est_gravity_vector: e.est_gravity_vector,
             },
         }
+    }
+}
+
+impl Display for IMUPacket {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let debug_str = format!("{:?}", self);
+        // Convert Rust Debug format "Struct { key: value }" to Python-like "Struct(key=value)"
+        // We replace the first " {" with "(" and the last "}" with ")"
+        // And ": " with "="
+        // This is a heuristic and assumes fields don't contain ": " in their string representation.
+        let s = debug_str.replacen(" { ", "(", 1);
+        let s = if s.ends_with('}') {
+            let mut chars = s.chars();
+            chars.next_back();
+            chars.as_str().to_string() + ")"
+        } else {
+            s
+        };
+        let s = s.replace(": ", "=");
+        write!(f, "{}", s)
+    }
+}
+
+#[pymethods]
+impl IMUPacket {
+    fn __str__(&self) -> String {
+        self.to_string()
     }
 }

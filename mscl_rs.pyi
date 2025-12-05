@@ -113,6 +113,12 @@ class SerialParser:
     :return: A list of IMUDataPacket instances.
     """
 
+    def is_running(self) -> bool: ...
+    """
+    Check if the parser thread is currently running.
+    :return: True if the parser is running, False otherwise.
+    """
+
 class MockParser:
     """
     A class for parsing MSCL packets from a mock dataset file. This is useful for testing
@@ -133,4 +139,11 @@ class MockParser:
     """
     Retrieve all available IMU data packets parsed from the mock dataset file.
     :return: A list of IMUDataPacket instances.
+    """
+
+    def is_running(self) -> bool: ...
+    """
+    Check if the parser thread is currently running. Guaranteed to return False once all data has
+    been read.
+    :return: True if the parser is running, False otherwise.
     """

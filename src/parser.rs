@@ -83,10 +83,14 @@ impl MsclParser {
                         buffer.truncate(current_len + n);
                         process_buffer(&mut buffer, &sender);
                     }
-                    Ok(_) => break, // EOF
+                    Ok(_) => {
+                        running_clone.store(false, Ordering::Relaxed);
+                        break; // EOF
+                    }
                     Err(e) => {
                         buffer.truncate(current_len);
                         let _ = error_sender.send(e.to_string());
+                        running_clone.store(false, Ordering::Relaxed);
                         break;
                     }
                 }
@@ -115,6 +119,10 @@ impl MsclParser {
 
     pub fn check_error(&self) -> Option<String> {
         self.error_receiver.try_recv().ok()
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::Relaxed)
     }
 }
 
@@ -182,4 +190,81 @@ impl Drop for MsclParser {
 }
 
 #[cfg(test)]
-mod parser_tests;
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_mock_parser() {
+        let path = "test_packet_temp.bin";
+        let mut file = std::fs::File::create(path).unwrap();
+        // Valid packet
+        let pkt = [
+            0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00,
+            0x3F, 0x80, 0x00, 0x00, 0xB7, 0x21,
+        ];
+        file.write_all(&pkt).unwrap();
+        // Invalid packet (wrong checksum)
+        let mut bad_pkt = pkt;
+        bad_pkt[19] = 0x22;
+        file.write_all(&bad_pkt).unwrap();
+        // Valid packet again
+        file.write_all(&pkt).unwrap();
+        drop(file);
+
+        let mut parser = MsclParser::new_mock(path).unwrap();
+        parser.start();
+        thread::sleep(Duration::from_millis(100));
+        let packets = parser.get_all_packets();
+
+        // Cleanup
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(packets.len(), 2);
+    }
+
+    #[test]
+    fn test_restart_parser() {
+        let path = "test_restart.bin";
+        let mut file = std::fs::File::create(path).unwrap();
+        // Valid packet
+        let pkt = [
+            0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00,
+            0x3F, 0x80, 0x00, 0x00, 0xB7, 0x21,
+        ];
+        file.write_all(&pkt).unwrap();
+        file.write_all(&pkt).unwrap();
+        drop(file);
+
+        let mut parser = MsclParser::new_mock(path).unwrap();
+
+        // First run
+        parser.start();
+        thread::sleep(Duration::from_millis(50));
+        parser.stop();
+        let packets1 = parser.get_all_packets();
+
+        // Second run
+        parser.start();
+        thread::sleep(Duration::from_millis(50));
+        parser.stop();
+        let packets2 = parser.get_all_packets();
+
+        // Cleanup
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(packets1.len() + packets2.len(), 2);
+    }
+
+    #[test]
+    fn test_stop_without_start() {
+        let path = "test_stop_no_start.bin";
+        let _ = std::fs::File::create(path).unwrap();
+        let mut parser = MsclParser::new_mock(path).unwrap();
+
+        // Should not panic
+        parser.stop();
+
+        let _ = std::fs::remove_file(path);
+    }
+}

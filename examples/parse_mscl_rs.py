@@ -75,7 +75,7 @@ def main():
 
         # time.sleep(0.1)  # Slight delay to make output readable
         # print(f"Packets received: {len(packets)}")
-        print(f"Rust parse time: {(t_rust - t0) / 1e6:.6f} ms")
+        # print(f"Rust parse time: {(t_rust - t0) / 1e6:.6f} ms")
         
         # Average Rust time per packet in this batch
         avg_rust_ns = (t_rust - t0) / len(packets)
@@ -124,3 +124,4 @@ if __name__ == "__main__":
     print("Staring parser again...")
     parser.start()
     main()
+    print("Stopping parser...")
