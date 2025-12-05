@@ -1,5 +1,7 @@
 use super::*;
 use crate::structs::ImuPacket;
+use std::thread;
+use std::time::Duration;
 
 #[test]
 fn test_fletcher_checksum() {
@@ -47,4 +49,31 @@ fn test_decode_raw_packet() {
     } else {
         panic!("Expected Raw packet");
     }
+}
+
+#[test]
+fn test_mock_parser() {
+    use std::io::Write;
+    let path = "test_packet_temp.bin";
+    let mut file = std::fs::File::create(path).unwrap();
+    // Valid packet
+    let pkt = [0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0xB7, 0x21];
+    file.write_all(&pkt).unwrap();
+    // Invalid packet (wrong checksum)
+    let mut bad_pkt = pkt;
+    bad_pkt[19] = 0x22;
+    file.write_all(&bad_pkt).unwrap();
+    // Valid packet again
+    file.write_all(&pkt).unwrap();
+    drop(file);
+
+    let mut parser = MsclParser::new_mock(path).unwrap();
+    parser.start();
+    thread::sleep(Duration::from_millis(100));
+    let packets = parser.get_all_packets();
+    
+    // Cleanup
+    let _ = std::fs::remove_file(path);
+
+    assert_eq!(packets.len(), 2);
 }

@@ -27,3 +27,5 @@ uv run examples/parse_mscl_rs.py
 ```
 
 This will automatically build the rust code and install the package in a virtual environment.
+
+You do not need to separately run `maturin develop` at all.
