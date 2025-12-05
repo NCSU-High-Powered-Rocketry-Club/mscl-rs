@@ -1,5 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::structs::{EstimatedDataPacket, ImuPacket, RawDataPacket};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Calculates the Fletcher Checksum for the given data.
 /// Returns a tuple (checksum_a, checksum_b).
@@ -30,7 +30,7 @@ pub fn decode_packet(desc_set: u8, payload: &[u8]) -> Option<ImuPacket> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    
+
     match desc_set {
         0x80 => decode_raw_packet(payload, timestamp),
         0x82 => decode_estimated_packet(payload, timestamp),
@@ -43,7 +43,7 @@ fn decode_raw_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket> {
         timestamp,
         ..Default::default()
     };
-    
+
     let mut i = 0;
 
     while i < payload.len() {
@@ -84,9 +84,7 @@ fn decode_raw_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket> {
                 ])
             }
             0x17 if data.len() == 4 => pkt.scaled_ambient_pressure = Some(read_f32(data)),
-            0x12 if data.len() == 12 => {
-                pkt.timestamp = (read_f64(&data[0..8]) * 1e9) as u128
-            }
+            0x12 if data.len() == 12 => pkt.timestamp = (read_f64(&data[0..8]) * 1e9) as u128,
             _ => {}
         }
         i += len;
@@ -100,7 +98,7 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
         timestamp,
         ..Default::default()
     };
-    
+
     let mut invalid: Vec<String> = Vec::new();
     let mut i = 0;
 
@@ -124,7 +122,7 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
                         read_f32(&data[0..4]),
                         read_f32(&data[4..8]),
                         read_f32(&data[8..12]),
-                        read_f32(&data[12..16])
+                        read_f32(&data[12..16]),
                     ]);
                 }
             }
@@ -134,7 +132,7 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
                         read_f32(&data[0..4]),
                         read_f32(&data[4..8]),
                         read_f32(&data[8..12]),
-                        read_f32(&data[12..16])
+                        read_f32(&data[12..16]),
                     ]);
                 }
             }
@@ -143,7 +141,7 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
                     pkt.est_angular_rate = Some([
                         read_f32(&data[0..4]),
                         read_f32(&data[4..8]),
-                        read_f32(&data[8..12])
+                        read_f32(&data[8..12]),
                     ]);
                 }
             }
@@ -152,7 +150,7 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
                     pkt.est_compensated_accel = Some([
                         read_f32(&data[0..4]),
                         read_f32(&data[4..8]),
-                        read_f32(&data[8..12])
+                        read_f32(&data[8..12]),
                     ]);
                 }
             }
@@ -161,7 +159,7 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
                     pkt.est_linear_accel = Some([
                         read_f32(&data[0..4]),
                         read_f32(&data[4..8]),
-                        read_f32(&data[8..12])
+                        read_f32(&data[8..12]),
                     ]);
                 }
             }
@@ -170,13 +168,11 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
                     pkt.est_gravity_vector = Some([
                         read_f32(&data[0..4]),
                         read_f32(&data[4..8]),
-                        read_f32(&data[8..12])
+                        read_f32(&data[8..12]),
                     ]);
                 }
             }
-            0x11 if data.len() == 12 => {
-                pkt.timestamp = (read_f64(&data[0..8]) * 1e9) as u128
-            }
+            0x11 if data.len() == 12 => pkt.timestamp = (read_f64(&data[0..8]) * 1e9) as u128,
             _ => {}
         }
         i += len;
@@ -188,7 +184,12 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket>
     Some(ImuPacket::Estimated(pkt))
 }
 
-fn check_est_field(data: &[u8], expected_len: usize, name: &str, invalid: &mut Vec<String>) -> bool {
+fn check_est_field(
+    data: &[u8],
+    expected_len: usize,
+    name: &str,
+    invalid: &mut Vec<String>,
+) -> bool {
     if data.len() != expected_len {
         return false;
     }
@@ -196,5 +197,5 @@ fn check_est_field(data: &[u8], expected_len: usize, name: &str, invalid: &mut V
     if flags & 1 == 0 {
         invalid.push(name.to_string());
     }
-    return true;
+    true
 }

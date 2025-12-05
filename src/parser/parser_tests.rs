@@ -57,7 +57,10 @@ fn test_mock_parser() {
     let path = "test_packet_temp.bin";
     let mut file = std::fs::File::create(path).unwrap();
     // Valid packet
-    let pkt = [0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0xB7, 0x21];
+    let pkt = [
+        0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0x3F,
+        0x80, 0x00, 0x00, 0xB7, 0x21,
+    ];
     file.write_all(&pkt).unwrap();
     // Invalid packet (wrong checksum)
     let mut bad_pkt = pkt;
@@ -71,9 +74,43 @@ fn test_mock_parser() {
     parser.start();
     thread::sleep(Duration::from_millis(100));
     let packets = parser.get_all_packets();
-    
+
     // Cleanup
     let _ = std::fs::remove_file(path);
 
     assert_eq!(packets.len(), 2);
+}
+
+#[test]
+fn test_restart_parser() {
+    use std::io::Write;
+    let path = "test_restart.bin";
+    let mut file = std::fs::File::create(path).unwrap();
+    // Valid packet
+    let pkt = [
+        0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0x3F,
+        0x80, 0x00, 0x00, 0xB7, 0x21,
+    ];
+    file.write_all(&pkt).unwrap();
+    file.write_all(&pkt).unwrap();
+    drop(file);
+
+    let mut parser = MsclParser::new_mock(path).unwrap();
+
+    // First run
+    parser.start();
+    thread::sleep(Duration::from_millis(50));
+    parser.stop();
+    let packets1 = parser.get_all_packets();
+
+    // Second run
+    parser.start();
+    thread::sleep(Duration::from_millis(50));
+    parser.stop();
+    let packets2 = parser.get_all_packets();
+
+    // Cleanup
+    let _ = std::fs::remove_file(path);
+
+    assert_eq!(packets1.len() + packets2.len(), 2);
 }

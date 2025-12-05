@@ -102,6 +102,11 @@ class SerialParser:
     Start the parser thread to read data from the serial port.
     """
 
+    def stop(self) -> None: ...
+    """
+    Stop the parser thread and close the serial port.
+    """
+
     def get_data_packets(self) -> list[IMUPacket]: ...
     """
     Retrieve all available IMU data packets parsed from the serial port.

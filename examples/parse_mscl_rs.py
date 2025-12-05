@@ -57,24 +57,25 @@ class EstimatedDataPacket(IMUDataPacket):
     # estGravityVector units are in m/s^2
     estGravityVector: tuple[float, float, float] | None = None
 
-parser = mscl_parser.SerialParser(port='/dev/ttyACM0')
+parser = mscl_parser.SerialParser(port='/dev/ttyACM0', timeout=1.0)
 
 def main():
     parser.start()
     last_raw_ts = None
     last_est_ts = None
 
-    while True:
+    # while True:
+    for _ in range(500000):
         t0 = time.perf_counter_ns()
         packets = parser.get_data_packets()
         t_rust = time.perf_counter_ns()
         if not packets:
+            # print("No packets received")
             continue
 
         # time.sleep(0.1)  # Slight delay to make output readable
-        print(f"Packets received: {len(packets)}")
+        # print(f"Packets received: {len(packets)}")
         print(f"Rust parse time: {(t_rust - t0) / 1e6:.6f} ms")
-        
         
         # Average Rust time per packet in this batch
         avg_rust_ns = (t_rust - t0) / len(packets)
@@ -112,7 +113,14 @@ def main():
                 # print(f"Alt: {pkt.est_pressure_alt:.3f} m")
                 # print(f"Orient (quat): {pkt.est_orient_quaternion}")
                 # print(f"Angular Rate: {pkt.est_angular_rate}")
-                print(f"Invalid Fields: {pkt.invalid_fields}")
+                # print(f"Invalid Fields: {pkt.invalid_fields}")
+
 
 if __name__ == "__main__":
+    main()
+    print("Stopping parser...")
+    parser.stop()
+
+    print("Staring parser again...")
+    parser.start()
     main()

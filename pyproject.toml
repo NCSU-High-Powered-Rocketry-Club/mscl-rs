@@ -7,10 +7,6 @@ authors = [
     { name = "Harshil", email = "37377066+harshil21@users.noreply.github.com" }
 ]
 requires-python = ">=3.10"
-dependencies = [
-    "maturin>=1.9.6",
-    "msgspec>=0.20.0",
-]
 
 [tool.uv]
 # Rebuild package when any rust files change
@@ -21,6 +17,7 @@ config-settings = { build-args = '--profile=dev' }
 [dependency-groups]
 dev = [
     "pyserial",
+    "msgspec>=0.20.0",
 ]
 
 [build-system]
