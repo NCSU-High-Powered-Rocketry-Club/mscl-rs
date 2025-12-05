@@ -41,12 +41,7 @@ pub fn decode_packet(desc_set: u8, payload: &[u8]) -> Option<ImuPacket> {
 fn decode_raw_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket> {
     let mut pkt = RawDataPacket {
         timestamp,
-        invalid_fields: None,
-        scaled_accel: None,
-        scaled_gyro: None,
-        delta_vel: None,
-        delta_theta: None,
-        scaled_ambient_pressure: None,
+        ..Default::default()
     };
     
     let mut i = 0;
@@ -103,14 +98,7 @@ fn decode_raw_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket> {
 fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<ImuPacket> {
     let mut pkt = EstimatedDataPacket {
         timestamp,
-        invalid_fields: None,
-        est_pressure_alt: None,
-        est_orient_quaternion: None,
-        est_attitude_uncert_quaternion: None,
-        est_angular_rate: None,
-        est_compensated_accel: None,
-        est_linear_accel: None,
-        est_gravity_vector: None,
+        ..Default::default()
     };
     
     let mut invalid: Vec<String> = Vec::new();

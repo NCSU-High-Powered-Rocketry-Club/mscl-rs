@@ -91,6 +91,7 @@ struct SerialParser {
 #[pymethods]
 impl SerialParser {
     #[new]
+    #[pyo3(signature=(port, baudrate=None, timeout=None))]
     fn new(port: String, baudrate: Option<u32>, timeout: Option<f64>) -> PyResult<Self> {
         let baudrate = baudrate.unwrap_or(115200);
         let timeout = timeout.unwrap_or(0.0);
