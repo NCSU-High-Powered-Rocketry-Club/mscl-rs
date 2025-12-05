@@ -84,17 +84,19 @@ impl From<ImuPacket> for IMUPacket {
 }
 
 #[pyclass(unsendable)]
-struct PySerialParser {
+struct SerialParser {
     inner: MsclParser,
 }
 
 #[pymethods]
-impl PySerialParser {
+impl SerialParser {
     #[new]
-    fn new(port: String, baudrate: u32, timeout: f64) -> PyResult<Self> {
+    fn new(port: String, baudrate: Option<u32>, timeout: Option<f64>) -> PyResult<Self> {
+        let baudrate = baudrate.unwrap_or(115200);
+        let timeout = timeout.unwrap_or(0.0);
         let inner = MsclParser::new_serial(&port, baudrate, timeout)
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
-        Ok(PySerialParser { inner })
+        Ok(SerialParser { inner })
     }
 
     fn start(&mut self) {
@@ -108,17 +110,17 @@ impl PySerialParser {
 }
 
 #[pyclass(unsendable)]
-struct PyMockParser {
+struct MockParser {
     inner: MsclParser,
 }
 
 #[pymethods]
-impl PyMockParser {
+impl MockParser {
     #[new]
     fn new(path: String) -> PyResult<Self> {
         let inner = MsclParser::new_mock(&path)
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
-        Ok(PyMockParser { inner })
+        Ok(MockParser { inner })
     }
 
     fn start(&mut self) {
@@ -133,8 +135,8 @@ impl PyMockParser {
 
 #[pymodule]
 fn mscl_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PySerialParser>()?;
-    m.add_class::<PyMockParser>()?;
+    m.add_class::<SerialParser>()?;
+    m.add_class::<MockParser>()?;
     m.add_class::<IMUPacket>()?;
     Ok(())
 }

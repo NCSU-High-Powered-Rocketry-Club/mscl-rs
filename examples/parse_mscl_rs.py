@@ -57,7 +57,7 @@ class EstimatedDataPacket(IMUDataPacket):
     # estGravityVector units are in m/s^2
     estGravityVector: tuple[float, float, float] | None = None
 
-parser = mscl_parser.PySerialParser('/dev/ttyACM0', 115200, timeout=0)
+parser = mscl_parser.SerialParser(port='/dev/ttyACM0')
 
 def main():
     parser.start()
