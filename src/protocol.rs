@@ -16,10 +16,6 @@ fn read_f32(d: &[u8]) -> f32 {
     f32::from_be_bytes(d.try_into().unwrap())
 }
 
-fn read_f64(d: &[u8]) -> f64 {
-    f64::from_be_bytes(d.try_into().unwrap())
-}
-
 fn read_u16(d: &[u8]) -> u16 {
     u16::from_be_bytes(d.try_into().unwrap())
 }
@@ -84,7 +80,6 @@ fn decode_raw_packet(payload: &[u8], timestamp: u128) -> Option<MsclPacket> {
                 ])
             }
             0x17 if data.len() == 4 => pkt.scaled_ambient_pressure = Some(read_f32(data)),
-            0x12 if data.len() == 12 => pkt.timestamp = (read_f64(&data[0..8]) * 1e9) as u128,
             _ => {}
         }
         i += len;
@@ -172,7 +167,6 @@ fn decode_estimated_packet(payload: &[u8], timestamp: u128) -> Option<MsclPacket
                     ]);
                 }
             }
-            0x11 if data.len() == 12 => pkt.timestamp = (read_f64(&data[0..8]) * 1e9) as u128,
             _ => {}
         }
         i += len;

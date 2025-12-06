@@ -1,7 +1,9 @@
 import mscl_rs
+from pathlib import Path
 
-mock_parser = mscl_rs.MockParser("datasets/500hz_10secs.bin")
+mock_parser = mscl_rs.MockParser(Path("datasets/500hz_10secs.bin"))
 mock_parser.start()
+
 
 def main():
     packets_parsed = 0
@@ -14,6 +16,7 @@ def main():
             print(f"First packet: {packets[0]}")
             print(f"Total packets parsed: {packets_parsed}")
         # time.sleep(0.1)
+
 
 if __name__ == "__main__":
     main()

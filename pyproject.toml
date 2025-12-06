@@ -11,13 +11,17 @@ requires-python = ">=3.10"
 [tool.uv]
 # Rebuild package when any rust files change
 cache-keys = [{file = "pyproject.toml"}, {file = "Cargo.toml"}, {file = "**/*.rs"}]
-# Uncomment to build rust code in development mode
-config-settings = { build-args = '--profile=dev' }
+# Uncomment to build rust code in development mode (no optimizations, faster builds)
+# config-settings = { build-args = '--profile=dev' }
 
 [dependency-groups]
 dev = [
     "pyserial",
     "msgspec>=0.20.0",
+    "pytest",
+    "python-mscl; python_version <= '3.13'",
+    "maturin",
+    "ruff",
 ]
 
 [build-system]

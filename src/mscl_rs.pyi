@@ -1,11 +1,24 @@
+import pathlib
 from typing import Literal
+
+RELEASE_BUILD: bool
+"""
+A boolean indicating whether the mscl_rs library was built in release mode (with optimizations
+enabled). This is useful for benchmarking, as the release build is significantly faster than the
+debug build.
+"""
+
+VERSION: str
+"""
+The version of the mscl_rs library.
+"""
 
 class IMUPacket:
     """
     A class representing a parsed IMU data packet.
     """
 
-    packet_type: Literal['raw', 'estimated']
+    packet_type: Literal["raw", "estimated"]
     """
     The type of the packet, either 'raw' or 'estimated'.
     """
@@ -85,18 +98,21 @@ class IMUPacket:
     (Estimated packets only) The estimated gravity vector in m/s^2.
     """
 
-
 class SerialParser:
     """
     A class for parsing MSCL packets from a serial port.
 
     :param port: The serial port to connect to.
     :param baudrate: The baud rate for the serial connection.
-    :param timeout: The read timeout for the serial connection in seconds.
+    :param timeout: The read timeout for the serial connection in seconds. Defaults to 0.1 seconds.
     """
 
-    def __init__(self, port: str, baudrate: int = 115200, timeout: float = 0.0) -> None: ...
-
+    def __init__(
+        self,
+        port: pathlib.Path | str,
+        baudrate: int = 115200,
+        timeout: float | None = 0.1,
+    ) -> None: ...
     def start(self) -> None: ...
     """
     Start the parser thread to read data from the serial port.
@@ -107,15 +123,19 @@ class SerialParser:
     Stop the parser thread and close the serial port.
     """
 
-    def get_data_packets(self) -> list[IMUPacket]: ...
+    def get_data_packets(self, block: bool = False) -> list[IMUPacket]: ...
     """
     Retrieve all available IMU data packets parsed from the serial port.
+    :param block: If True, block until the timeout specified in the constructor. If False, return
+        instantly if nothing is found.
+
     :return: A list of IMUDataPacket instances.
     """
 
     def is_running(self) -> bool: ...
     """
     Check if the parser thread is currently running.
+
     :return: True if the parser is running, False otherwise.
     """
 
@@ -125,19 +145,28 @@ class MockParser:
     without a physical IMU device.
 
     :param path: The path to the mock dataset file. This will be a .bin file (straight binary dump
-    from the IMU).
+        from the IMU).
+    :param timeout: The read timeout for the mock dataset file in seconds. Defaults to 0.1 seconds.
     """
 
-    def __init__(self, path: str) -> None: ...
-
+    def __init__(
+        self, path: pathlib.Path | str, timeout: float | None = 0.1
+    ) -> None: ...
     def start(self) -> None: ...
     """
     Start the parser thread to read data from the mock dataset file.
     """
 
-    def get_data_packets(self) -> list[IMUPacket]: ...
+    def stop(self) -> None: ...
+    """
+    Stop the parser thread and close the mock dataset file.
+    """
+
+    def get_data_packets(self, block: bool = False) -> list[IMUPacket]: ...
     """
     Retrieve all available IMU data packets parsed from the mock dataset file.
+    :param block: If True, block until the timeout specified in the constructor. If False, return
+        instantly if nothing is found.
     :return: A list of IMUDataPacket instances.
     """
 
@@ -145,5 +174,6 @@ class MockParser:
     """
     Check if the parser thread is currently running. Guaranteed to return False once all data has
     been read.
+
     :return: True if the parser is running, False otherwise.
     """

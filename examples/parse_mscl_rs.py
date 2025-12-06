@@ -4,6 +4,7 @@ import mscl_rs as mscl_parser
 import msgspec
 import time
 
+
 class IMUDataPacket(msgspec.Struct, array_like=True, tag=True):
     """
     Base class representing a collection of data packets from the IMU.
@@ -57,26 +58,28 @@ class EstimatedDataPacket(IMUDataPacket):
     # estGravityVector units are in m/s^2
     estGravityVector: tuple[float, float, float] | None = None
 
-parser = mscl_parser.SerialParser(port='/dev/ttyACM0', timeout=1.0)
+
+parser = mscl_parser.SerialParser(port="/dev/ttyACM0", timeout=1.0)
+
 
 def main():
     parser.start()
     last_raw_ts = None
     last_est_ts = None
 
-    # while True:
-    for _ in range(500000):
+    while True:
+        # for _ in range(500000):
         t0 = time.perf_counter_ns()
-        packets = parser.get_data_packets()
+        packets = parser.get_data_packets(block=True)
         t_rust = time.perf_counter_ns()
         if not packets:
-            # print("No packets received")
+            print("No packets received")
             continue
 
-        # time.sleep(0.1)  # Slight delay to make output readable
-        # print(f"Packets received: {len(packets)}")
-        # print(f"Rust parse time: {(t_rust - t0) / 1e6:.6f} ms")
-        
+        # time.sleep(1)  # Slight delay to make output readable
+        print(f"Packets received: {len(packets)}")
+        print(f"Rust parse time: {(t_rust - t0) / 1e6:.6f} ms")
+
         # Average Rust time per packet in this batch
         avg_rust_ns = (t_rust - t0) / len(packets)
 
@@ -85,29 +88,29 @@ def main():
             # pkt is now an instance of mscl_rs.IMUPacket
             packet_type = pkt.packet_type
             ts = pkt.timestamp
-            
-            if packet_type == 'raw':
+
+            if packet_type == "raw":
                 # Access raw fields directly from the Rust object
                 # pkt.scaled_accel, pkt.scaled_gyro, etc.
                 t_end_struct = time.perf_counter_ns()
-                
+
                 dt_ms = 0.0
                 if last_raw_ts is not None:
                     dt_ms = (ts - last_raw_ts) / 1e6
                 last_raw_ts = ts
-                
+
                 parse_ms = (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
                 # print(f"Raw interval: {dt_ms:.3f} ms | Parse: {parse_ms:.6f} ms")
-                
-            elif packet_type == 'estimated':
+
+            elif packet_type == "estimated":
                 # Access estimated fields directly
                 t_end_struct = time.perf_counter_ns()
-                
+
                 dt_ms = 0.0
                 if last_est_ts is not None:
                     dt_ms = (ts - last_est_ts) / 1e6
                 last_est_ts = ts
-                
+
                 parse_ms = (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
                 # print(f"Estimated interval: {dt_ms:.3f} ms | Parse: {parse_ms:.6f} ms")
                 # print(f"Alt: {pkt.est_pressure_alt:.3f} m")

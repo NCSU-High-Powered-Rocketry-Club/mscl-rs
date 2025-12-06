@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{self, Read};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -22,8 +23,8 @@ pub struct MsclParser {
 }
 
 impl MsclParser {
-    pub fn new_serial(port: &str, baudrate: u32, timeout: f64) -> io::Result<Self> {
-        let ser = serialport::new(port, baudrate)
+    pub fn new_serial(port: &PathBuf, baudrate: u32, timeout: f64) -> io::Result<Self> {
+        let ser = serialport::new(port.to_str().unwrap(), baudrate)
             .data_bits(serialport::DataBits::Eight)
             .flow_control(serialport::FlowControl::None)
             .parity(serialport::Parity::None)
@@ -35,7 +36,7 @@ impl MsclParser {
         Ok(Self::new(Box::new(ser)))
     }
 
-    pub fn new_mock(path: &str) -> io::Result<Self> {
+    pub fn new_mock(path: &PathBuf) -> io::Result<Self> {
         let file = File::open(path)?;
         Ok(Self::new(Box::new(file)))
     }
@@ -109,12 +110,23 @@ impl MsclParser {
         }
     }
 
-    pub fn get_all_packets(&mut self) -> Vec<IMUPacket> {
+    pub fn get_packets(&mut self, timeout: Option<Duration>) -> Result<Vec<IMUPacket>, RecvTimeoutError> {
         let mut packets = Vec::new();
+
+        // If blocking, wait for at most one packet. The next loop will drain any others.
+        if let Some(duration) = timeout {
+            let pkt = self.receiver.recv_timeout(duration)?;
+            packets.push(pkt);
+        }
+
         while let Ok(pkt) = self.receiver.try_recv() {
             packets.push(pkt);
         }
-        packets
+        Ok(packets)
+    }
+
+    pub fn get_all_packets(&mut self) -> Result<Vec<IMUPacket>, RecvTimeoutError> {
+        self.get_packets(None)
     }
 
     pub fn check_error(&self) -> Option<String> {
@@ -266,5 +278,29 @@ mod tests {
         parser.stop();
 
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn test_blocking_parser() {
+        let path = "test_blocking.bin";
+        let mut file = std::fs::File::create(path).unwrap();
+        // Valid packet
+        let pkt = [
+            0x75, 0x65, 0x80, 0x0E, 0x0E, 0x04, 0x3F, 0x80, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00,
+            0x3F, 0x80, 0x00, 0x00, 0xB7, 0x21,
+        ];
+        file.write_all(&pkt).unwrap();
+        drop(file);
+
+        let mut parser = MsclParser::new_mock(path).unwrap();
+        parser.start();
+
+        // Should return immediately if data is ready, or wait if not.
+        let packets = parser.get_packets(Some(Duration::from_millis(100)));
+
+        // Cleanup
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(packets.len(), 1);
     }
 }
