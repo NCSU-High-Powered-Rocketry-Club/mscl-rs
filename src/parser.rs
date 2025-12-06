@@ -224,10 +224,10 @@ mod tests {
         file.write_all(&pkt).unwrap();
         drop(file);
 
-        let mut parser = MsclParser::new_mock(path).unwrap();
+        let mut parser = MsclParser::new_mock(&PathBuf::from(path)).unwrap();
         parser.start();
         thread::sleep(Duration::from_millis(100));
-        let packets = parser.get_all_packets();
+        let packets = parser.get_all_packets().unwrap();
 
         // Cleanup
         let _ = std::fs::remove_file(path);
@@ -248,19 +248,19 @@ mod tests {
         file.write_all(&pkt).unwrap();
         drop(file);
 
-        let mut parser = MsclParser::new_mock(path).unwrap();
+        let mut parser = MsclParser::new_mock(&PathBuf::from(path)).unwrap();
 
         // First run
         parser.start();
         thread::sleep(Duration::from_millis(50));
         parser.stop();
-        let packets1 = parser.get_all_packets();
+        let packets1 = parser.get_all_packets().unwrap();
 
         // Second run
         parser.start();
         thread::sleep(Duration::from_millis(50));
         parser.stop();
-        let packets2 = parser.get_all_packets();
+        let packets2 = parser.get_all_packets().unwrap();
 
         // Cleanup
         let _ = std::fs::remove_file(path);
@@ -272,7 +272,7 @@ mod tests {
     fn test_stop_without_start() {
         let path = "test_stop_no_start.bin";
         let _ = std::fs::File::create(path).unwrap();
-        let mut parser = MsclParser::new_mock(path).unwrap();
+        let mut parser = MsclParser::new_mock(&PathBuf::from(path)).unwrap();
 
         // Should not panic
         parser.stop();
@@ -292,11 +292,11 @@ mod tests {
         file.write_all(&pkt).unwrap();
         drop(file);
 
-        let mut parser = MsclParser::new_mock(path).unwrap();
+        let mut parser = MsclParser::new_mock(&PathBuf::from(path)).unwrap();
         parser.start();
 
         // Should return immediately if data is ready, or wait if not.
-        let packets = parser.get_packets(Some(Duration::from_millis(100)));
+        let packets = parser.get_packets(Some(Duration::from_millis(100))).unwrap();
 
         // Cleanup
         let _ = std::fs::remove_file(path);

@@ -240,8 +240,8 @@ mod tests {
 
         if let MsclPacket::Raw(r) = pkt {
             assert_eq!(r.scaled_accel, Some([1.0, 2.0, 3.0]));
-            // 123.456 * 1e9 = 123456000000
-            assert_eq!(r.timestamp, 123456000000);
+            // Timestamp is now system time, so just check it's non-zero
+            assert!(r.timestamp > 0);
         } else {
             panic!("Expected Raw packet");
         }
@@ -269,7 +269,8 @@ mod tests {
         let pkt = decode_packet(0x82, &payload).unwrap();
 
         if let MsclPacket::Estimated(e) = pkt {
-            assert_eq!(e.timestamp, 100000000000);
+            // Timestamp is now system time, so just check it's non-zero
+            assert!(e.timestamp > 0);
             assert_eq!(e.est_pressure_alt, Some(500.0));
         } else {
             panic!("Expected Estimated packet");
