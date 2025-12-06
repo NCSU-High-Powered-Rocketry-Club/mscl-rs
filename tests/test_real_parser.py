@@ -172,7 +172,7 @@ class TestRealParser:
         # We should be ~10x faster than mscl:
         assert avg_parsing_time_rs < 0.1 * avg_parsing_time_mscl, (
             "mscl_rs parsing time is not at least 10x faster than mscl parsing time! Make sure you"
-            "are running this benchmark with the absease build of the mscl_rs library."
+            "are running this benchmark with the release build of the mscl_rs library."
         )
 
     def test_expected_values(self):
