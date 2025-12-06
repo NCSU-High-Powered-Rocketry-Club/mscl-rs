@@ -98,7 +98,11 @@ class TestRealParser:
                 "Benchmarking requires the release build of the mscl_rs library. Please rebuild"
                 " with optimizations enabled."
             )
-        connection = mscl.Connection.Serial(self.port)
+        try:
+            connection = mscl.Connection.Serial(self.port)
+        except Exception as e:
+            pytest.skip(f"Could not open serial port {self.port}: {e}. Skipping benchmark.")
+
         node = mscl.InertialNode(connection)
         packets_parsed_mscl = 0
 
@@ -172,7 +176,12 @@ class TestRealParser:
         )
 
     def test_expected_values(self):
-        parser = SerialParser(port=self.port, timeout=1.0)
+        try:
+            parser = SerialParser(port=self.port, timeout=1.0)
+        except Exception as e:
+            pytest.skip(
+                f"Could not open serial port {self.port}: {e}. Skipping expected values test."
+            )
         parser.start()
         time.sleep(0.01)
         packets_rs = parser.get_data_packets(block=True)

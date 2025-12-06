@@ -105,6 +105,8 @@ class SerialParser:
     :param port: The serial port to connect to.
     :param baudrate: The baud rate for the serial connection.
     :param timeout: The read timeout for the serial connection in seconds. Defaults to 0.1 seconds.
+
+    :raises OSError: If the serial port cannot be opened.
     """
 
     def __init__(
@@ -129,7 +131,10 @@ class SerialParser:
     :param block: If True, block until the timeout specified in the constructor. If False, return
         instantly if nothing is found.
 
-    :return: A list of IMUDataPacket instances.
+    :return: A list of IMUPacket instances.
+
+    :raises OSError: If there is an error reading from the serial port. Can also be raised when
+        `block=True` and the timeout is reached without receiving any data.
     """
 
     def is_running(self) -> bool: ...
@@ -167,7 +172,11 @@ class MockParser:
     Retrieve all available IMU data packets parsed from the mock dataset file.
     :param block: If True, block until the timeout specified in the constructor. If False, return
         instantly if nothing is found.
-    :return: A list of IMUDataPacket instances.
+
+    :return: A list of IMUPacket instances.
+
+    :raises OSError: If there is an error reading from the serial port. Can also be raised when
+        `block=True` and the timeout is reached without receiving any data.
     """
 
     def is_running(self) -> bool: ...
