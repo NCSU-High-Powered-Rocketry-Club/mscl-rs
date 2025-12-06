@@ -1,206 +1,94 @@
+use std::path::PathBuf;
+
 use pyo3::prelude::*;
-use pyo3::types::PyTuple;
-use pyo3::IntoPyObjectExt;
-use std::sync::Mutex;
 
-mod parser;
-mod structs;
+pub mod parser;
+mod protocol;
+pub mod structs;
 
-use parser::SerialParser;
-use structs::ImuPacket;
+use parser::MsclParser;
+use structs::IMUPacket;
 
-#[pyclass]
-struct PySerialParser {
-    inner: Mutex<SerialParser>,
-}
+macro_rules! impl_parser {
+    ($struct_name:ident, $new_method:item) => {
+        #[pymethods]
+        impl $struct_name {
+            $new_method
 
-#[pymethods]
-impl PySerialParser {
-    #[new]
-    fn new(port: String, baudrate: u32, timeout: f64) -> PyResult<Self> {
-        let timeout_duration = std::time::Duration::from_secs_f64(timeout);
-        let inner = SerialParser::new(&port, baudrate, timeout_duration)
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
-        Ok(PySerialParser {
-            inner: Mutex::new(inner),
-        })
-    }
+            fn start(&mut self) {
+                self.inner.start();
+            }
 
-    fn get_data_packets(slf: &Bound<'_, Self>) -> PyResult<Vec<Py<PyAny>>> {
-        let py = slf.py();
-        let binding = slf.borrow();
-        let mut guard = binding.inner.lock().unwrap();
-        let packets = guard.get_all_packets();
-        drop(guard);
+            fn stop(&mut self) {
+                self.inner.stop();
+            }
 
-        let mut py_packets = Vec::with_capacity(packets.len());
-
-        for packet in packets {
-            let py_packet = match packet {
-                ImuPacket::Raw(r) => {
-                    let mut elements: Vec<Py<PyAny>> = Vec::new();
-                    
-                    // Add packet type
-                    elements.push("raw".into_py_any(py).unwrap());
-                    
-                    // Add timestamp
-                    elements.push(r.timestamp.into_py_any(py).unwrap());
-                    
-                    // Add invalid_fields
-                    elements.push(r.invalid_fields.into_py_any(py).unwrap());
-                    
-                    // Add accel components (or None for each if missing)
-                    if let Some([x, y, z]) = r.scaled_accel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add gyro components (or None for each if missing)
-                    if let Some([x, y, z]) = r.scaled_gyro {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add delta_vel components (or None for each if missing)
-                    if let Some([x, y, z]) = r.delta_vel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add delta_theta components (or None for each if missing)
-                    if let Some([x, y, z]) = r.delta_theta {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add pressure
-                    elements.push(r.scaled_ambient_pressure.into_py_any(py).unwrap());
-
-                    PyTuple::new(py, elements)
-                        .unwrap()
-                        .into_any()
-                        .unbind()
+            #[pyo3(signature = (block=false))]
+            fn get_data_packets(&mut self, block: bool) -> PyResult<Vec<IMUPacket>> {
+                if let Some(err_msg) = self.inner.check_error() {
+                    return Err(pyo3::exceptions::PyIOError::new_err(err_msg));
                 }
-                ImuPacket::Estimated(e) => {
-                    let mut elements: Vec<Py<PyAny>> = Vec::new();
-                    
-                    // Add packet type
-                    elements.push("estimated".into_py_any(py).unwrap());
-                    
-                    // Add timestamp
-                    elements.push(e.timestamp.into_py_any(py).unwrap());
-                    
-                    // Add invalid_fields
-                    elements.push(e.invalid_fields.into_py_any(py).unwrap());
-                    
-                    // Add pressure_alt
-                    elements.push(e.est_pressure_alt.into_py_any(py).unwrap());
-                    
-                    // Add orient_quat components (or None for each if missing)
-                    if let Some([w, x, y, z]) = e.est_orient_quaternion {
-                        elements.push(w.into_py_any(py).unwrap());
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add attitude_uncert_quat components (or None for each if missing)
-                    if let Some([w, x, y, z]) = e.est_attitude_uncert_quaternion {
-                        elements.push(w.into_py_any(py).unwrap());
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add angular_rate components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_angular_rate {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add compensated_accel components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_compensated_accel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add linear_accel components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_linear_accel {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
-                    
-                    // Add gravity_vector components (or None for each if missing)
-                    if let Some([x, y, z]) = e.est_gravity_vector {
-                        elements.push(x.into_py_any(py).unwrap());
-                        elements.push(y.into_py_any(py).unwrap());
-                        elements.push(z.into_py_any(py).unwrap());
-                    } else {
-                        elements.push(py.None());
-                        elements.push(py.None());
-                        elements.push(py.None());
-                    }
+                let timeout = if block {
+                    Some(std::time::Duration::from_secs_f64(self.timeout))
+                } else {
+                    None
+                };
 
-                    PyTuple::new(py, elements)
-                        .unwrap()
-                        .into_any()
-                        .unbind()
-                }
-            };
-            py_packets.push(py_packet);
+                // Get all packets, and return early if there's an error
+                let packets = self.inner.get_packets(timeout)
+                             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+                Ok(packets)
+            }
+
+            fn is_running(&self) -> bool {
+                self.inner.is_running()
+            }
         }
-
-        Ok(py_packets)
-    }
+    };
 }
 
-#[pymodule]
+#[pyclass(unsendable)]
+struct SerialParser {
+    inner: MsclParser,
+    timeout: f64,
+}
+
+impl_parser!(
+    SerialParser,
+    #[new]
+    #[pyo3(signature=(port, baudrate=None, timeout=0.1))]
+    fn new(port: PathBuf, baudrate: Option<u32>, timeout: Option<f64>) -> PyResult<Self> {
+        let baudrate = baudrate.unwrap_or(115200);
+        let timeout_val = timeout.unwrap_or(0.0);
+        let inner = MsclParser::new_serial(&port, baudrate, timeout_val)
+            .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+        Ok(SerialParser { inner, timeout: timeout_val })
+    }
+);
+
+#[pyclass(unsendable)]
+struct MockParser {
+    inner: MsclParser,
+    timeout: f64,
+}
+
+impl_parser!(
+    MockParser,
+    #[new]
+    #[pyo3(signature=(path, timeout=0.1))]
+    fn new(path: PathBuf, timeout: Option<f64>) -> PyResult<Self> {
+        let inner = MsclParser::new_mock(&path)
+            .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+        Ok(MockParser { inner, timeout: timeout.unwrap_or(0.0) })
+    }
+);
+
+#[pymodule(gil_used = false)]
 fn mscl_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PySerialParser>()?;
+    m.add_class::<SerialParser>()?;
+    m.add_class::<MockParser>()?;
+    m.add_class::<IMUPacket>()?;
+    m.add("VERSION", env!("CARGO_PKG_VERSION"))?;
+    m.add("RELEASE_BUILD", cfg!(not(debug_assertions)))?;
     Ok(())
 }

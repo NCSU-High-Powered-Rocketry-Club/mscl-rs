@@ -1,7 +1,9 @@
 """Example of parsing data packets from the IMU using mscl_rs and msgspec."""
 
-import mscl_rs
+import mscl_rs as mscl_parser
 import msgspec
+import time
+
 
 class IMUDataPacket(msgspec.Struct, array_like=True, tag=True):
     """
@@ -26,20 +28,12 @@ class RawDataPacket(IMUDataPacket):
     """
 
     # scaledAccel units are in "g" (9.81 m/s^2)
-    scaledAccelX: float | None = None
-    scaledAccelY: float | None = None
-    scaledAccelZ: float | None = None  # this will be ~-1.0g when the IMU is at rest
-    scaledGyroX: float | None = None
-    scaledGyroY: float | None = None
-    scaledGyroZ: float | None = None
+    scaledAccel: tuple[float, float, float] | None = None
+    scaledGyro: tuple[float, float, float] | None = None
     # deltaVel units are in g seconds
-    deltaVelX: float | None = None
-    deltaVelY: float | None = None
-    deltaVelZ: float | None = None
+    deltaVel: tuple[float, float, float] | None = None
     # in radians
-    deltaThetaX: float | None = None
-    deltaThetaY: float | None = None
-    deltaThetaZ: float | None = None
+    deltaTheta: tuple[float, float, float] | None = None
     # pressure in mbar
     scaledAmbientPressure: float | None = None
 
@@ -54,51 +48,83 @@ class EstimatedDataPacket(IMUDataPacket):
     """
 
     estPressureAlt: float | None = None
-    estOrientQuaternionW: float | None = None
-    estOrientQuaternionX: float | None = None
-    estOrientQuaternionY: float | None = None
-    estOrientQuaternionZ: float | None = None
-    estAttitudeUncertQuaternionW: float | None = None
-    estAttitudeUncertQuaternionX: float | None = None
-    estAttitudeUncertQuaternionY: float | None = None
-    estAttitudeUncertQuaternionZ: float | None = None
-    estAngularRateX: float | None = None
-    estAngularRateY: float | None = None
-    estAngularRateZ: float | None = None
+    estOrientQuaternion: tuple[float, float, float, float] | None = None
+    estAttitudeUncertQuaternion: tuple[float, float, float, float] | None = None
+    estAngularRate: tuple[float, float, float] | None = None
     # estCompensatedAccel units are in m/s^2, including gravity
-    estCompensatedAccelX: float | None = None
-    estCompensatedAccelY: float | None = None
-    estCompensatedAccelZ: float | None = None  # this will be ~-9.81 m/s^2 when the IMU is at rest
+    estCompensatedAccel: tuple[float, float, float] | None = None
     # estLinearAccel units are in m/s^2, excluding gravity
-    estLinearAccelX: float | None = None
-    estLinearAccelY: float | None = None
-    estLinearAccelZ: float | None = None  # this will be ~0 m/s^2 when the IMU is at rest
+    estLinearAccel: tuple[float, float, float] | None = None
     # estGravityVector units are in m/s^2
-    estGravityVectorX: float | None = None
-    estGravityVectorY: float | None = None
-    estGravityVectorZ: float | None = None
+    estGravityVector: tuple[float, float, float] | None = None
 
-parser = mscl_rs.PySerialParser('/dev/ttyACM0', 115200, timeout=0)  # Small timeout for hot loop
 
-# In hot loop:
+parser = mscl_parser.SerialParser(port="/dev/ttyACM0", timeout=1.0)
+
 
 def main():
+    parser.start()
+    last_raw_ts = None
+    last_est_ts = None
+
     while True:
-        packets = parser.get_data_packets()
+        # for _ in range(500000):
+        t0 = time.perf_counter_ns()
+        packets = parser.get_data_packets(block=True)
+        t_rust = time.perf_counter_ns()
+        if not packets:
+            print("No packets received")
+            continue
+
+        # time.sleep(1)  # Slight delay to make output readable
+        print(f"Packets received: {len(packets)}")
+        print(f"Rust parse time: {(t_rust - t0) / 1e6:.6f} ms")
+
+        # Average Rust time per packet in this batch
+        avg_rust_ns = (t_rust - t0) / len(packets)
+
         for pkt in packets:
-            packet_type, ts, invalid, *data = pkt
-            if packet_type == 'raw':
-                # print(*data)
-                raw = RawDataPacket(ts, invalid, *data)
-                # print(raw)
-                # Process...
-            elif packet_type == 'estimated':
-                est = EstimatedDataPacket(ts, invalid, *data)
-                print(est)
-                # pressure_alt, orient_quat, attitude_uncert_quat, angular_rate, compensated_accel, linear_accel, gravity_vector = data
-                # print(f"Orientation: {orient_quat}, Angular Rate: {angular_rate}, Compensated Accel: {compensated_accel}")
-                # Process...
-            # Send to queue
+            t_start_struct = time.perf_counter_ns()
+            # pkt is now an instance of mscl_rs.IMUPacket
+            packet_type = pkt.packet_type
+            ts = pkt.timestamp
+
+            if packet_type == "raw":
+                # Access raw fields directly from the Rust object
+                # pkt.scaled_accel, pkt.scaled_gyro, etc.
+                t_end_struct = time.perf_counter_ns()
+
+                dt_ms = 0.0
+                if last_raw_ts is not None:
+                    dt_ms = (ts - last_raw_ts) / 1e6
+                last_raw_ts = ts
+
+                parse_ms = (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
+                # print(f"Raw interval: {dt_ms:.3f} ms | Parse: {parse_ms:.6f} ms")
+
+            elif packet_type == "estimated":
+                # Access estimated fields directly
+                t_end_struct = time.perf_counter_ns()
+
+                dt_ms = 0.0
+                if last_est_ts is not None:
+                    dt_ms = (ts - last_est_ts) / 1e6
+                last_est_ts = ts
+
+                parse_ms = (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
+                # print(f"Estimated interval: {dt_ms:.3f} ms | Parse: {parse_ms:.6f} ms")
+                # print(f"Alt: {pkt.est_pressure_alt:.3f} m")
+                # print(f"Orient (quat): {pkt.est_orient_quaternion}")
+                # print(f"Angular Rate: {pkt.est_angular_rate}")
+                # print(f"Invalid Fields: {pkt.invalid_fields}")
+
 
 if __name__ == "__main__":
     main()
+    print("Stopping parser...")
+    parser.stop()
+
+    print("Staring parser again...")
+    parser.start()
+    main()
+    print("Stopping parser...")
