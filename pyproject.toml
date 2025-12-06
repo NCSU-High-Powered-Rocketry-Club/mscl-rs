@@ -2,11 +2,29 @@
 name = "mscl-rs"
 version = "0.1.0"
 description = "Parser for MicroStrain Communication Library (MSCL) packets in Rust."
+license = "MIT"
 readme = "README.md"
 authors = [
     { name = "Harshil", email = "37377066+harshil21@users.noreply.github.com" }
 ]
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+"Homepage" = "https://ncsurocketry.org"
+"Source" = "https://github.com/NCSU-High-Powered-Rocketry-Club/mscl_rs"
 
 [tool.uv]
 # Rebuild package when any rust files change
