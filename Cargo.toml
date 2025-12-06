@@ -11,4 +11,4 @@ crate-type = ["cdylib"]
 [dependencies]
 byteorder = "1.5.0"
 pyo3 = { version = "0.27.2", features = ["extension-module", "experimental-inspect"] }
-serialport = "4.8.1"
+serialport = { version = "4.8.1", default-features = false }

@@ -22,8 +22,16 @@ dev = [
     "python-mscl; python_version <= '3.13'",
     "maturin",
     "ruff",
+    "ziglang"  # for maturin's zig support when cross-compiling
 ]
 
 [build-system]
 requires = ["maturin>=1.0"]
 build-backend = "maturin"
+
+# For uploading to TestPyPI
+# [[tool.uv.index]]
+# name = "testpypi"
+# url = "https://test.pypi.org/simple/"
+# publish-url = "https://test.pypi.org/legacy/"
+# explicit = true
