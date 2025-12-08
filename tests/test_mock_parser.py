@@ -26,6 +26,14 @@ class TestMockParser:
         packets = parser.get_data_packets(block=True)
         assert isinstance(packets, list)
         assert all(hasattr(pkt, "timestamp") for pkt in packets)
+    
+    def test_context_manager(self):
+        parser = MockParser("datasets/500hz_10secs.bin")
+        with parser:
+            assert parser.is_running(), "Parser should be running inside context manager"
+            packets = parser.get_data_packets(block=True)
+            assert isinstance(packets, list)
+        assert not parser.is_running(), "Parser should not be running outside context manager"
 
     def test_packet_content(self):
         parser = MockParser("datasets/500hz_10secs.bin")
