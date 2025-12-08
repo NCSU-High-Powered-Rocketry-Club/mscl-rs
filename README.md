@@ -104,6 +104,10 @@ We can now publish to PyPI using `uv`:
 uv publish target/wheels/*
 ```
 
+## Changelog
+
+See the GitHub releases page for the changelog.
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
