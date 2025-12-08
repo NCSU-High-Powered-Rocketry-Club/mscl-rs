@@ -33,17 +33,12 @@ over a serial connection. E.g.
 from mscl_rs import SerialParser
 
 parser = SerialParser(port="/dev/ttyUSB0", timeout=1.0)  # Timeout of 1 second
-parser.start()  # Starts a background thread to collect data
 
-try:
+with parser:  # calls parser.start() and parser.stop() automatically
     while True:
         packets = parser.get_data_packets(block=True)  # Block until data is available
         for packet in packets:
             print(packet)
-except KeyboardInterrupt:
-    pass
-finally:
-    parser.stop()
 ```
 
 To see all available methods, documentation, and the data packet structure, see the

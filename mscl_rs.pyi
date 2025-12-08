@@ -1,4 +1,5 @@
 import pathlib
+from types import TracebackType
 from typing import Literal
 
 RELEASE_BUILD: bool
@@ -144,6 +145,21 @@ class SerialParser:
     :return: True if the parser is running, False otherwise.
     """
 
+    def __enter__(self) -> "SerialParser": ...
+    """
+    Context manager entry. Opens the serial port and starts the parser thread.
+    """
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None, 
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
+    """
+    Context manager exit. Stops the parser thread and closes the serial port.
+    """
+
 class MockParser:
     """
     A class for parsing MSCL packets from a mock dataset file. This is useful for testing
@@ -185,4 +201,19 @@ class MockParser:
     been read.
 
     :return: True if the parser is running, False otherwise.
+    """
+
+    def __enter__(self) -> "MockParser": ...
+    """
+    Context manager entry. Opens the mock dataset file and starts the parser thread.
+    """
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None, 
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
+    """
+    Context manager exit. Stops the parser thread and closes the mock dataset file.
     """

@@ -43,6 +43,21 @@ macro_rules! impl_parser {
             fn is_running(&self) -> bool {
                 self.inner.is_running()
             }
+
+            fn __enter__(slf: Bound<'_, Self>) -> PyResult<Bound<'_, Self>> {
+                slf.borrow_mut().start();
+                Ok(slf)
+            }
+
+            fn __exit__(
+                slf: Bound<'_, Self>,
+                _exc_type: Option<Bound<'_, PyAny>>,
+                _exc_value: Option<Bound<'_, PyAny>>,
+                _traceback: Option<Bound<'_, PyAny>>,
+            ) -> PyResult<()> {
+                slf.borrow_mut().stop();
+                Ok(())
+            }
         }
     };
 }
