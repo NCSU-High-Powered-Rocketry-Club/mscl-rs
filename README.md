@@ -51,7 +51,7 @@ You will need [uv](https://docs.astral.sh/uv/getting-started/installation/), and
 Then clone the repository:
 
 ```bash
-git clone https://github.com/NCSU-High-Powered-Rocketry-Club/mscl_rs.git && cd mscl-rs
+git clone https://github.com/NCSU-High-Powered-Rocketry-Club/mscl_rs.git && cd mscl-rs && uv run pre-commit install
 ```
 
 If you have plugged in your IMU via USB, you can test the example parser script by the command
