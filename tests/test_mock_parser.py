@@ -1,8 +1,11 @@
 import pytest
+
 from mscl_rs import MockParser
 
 
 class TestMockParser:
+    """Tests for the MockParser class."""
+
     def test_initialization(self):
         parser = MockParser("datasets/500hz_10secs.bin")
         assert parser is not None
@@ -26,6 +29,14 @@ class TestMockParser:
         packets = parser.get_data_packets(block=True)
         assert isinstance(packets, list)
         assert all(hasattr(pkt, "timestamp") for pkt in packets)
+
+    def test_context_manager(self):
+        parser = MockParser("datasets/500hz_10secs.bin")
+        with parser:
+            assert parser.is_running(), "Parser should be running inside context manager"
+            packets = parser.get_data_packets(block=True)
+            assert isinstance(packets, list)
+        assert not parser.is_running(), "Parser should not be running outside context manager"
 
     def test_packet_content(self):
         parser = MockParser("datasets/500hz_10secs.bin")
@@ -95,9 +106,7 @@ class TestMockParser:
                 assert len(packet.est_gravity_vector) == 3
                 # Validate element types
                 assert all(isinstance(x, float) for x in packet.est_orient_quaternion)
-                assert all(
-                    isinstance(x, float) for x in packet.est_attitude_uncert_quaternion
-                )
+                assert all(isinstance(x, float) for x in packet.est_attitude_uncert_quaternion)
                 assert all(isinstance(x, float) for x in packet.est_angular_rate)
                 assert all(isinstance(x, float) for x in packet.est_compensated_accel)
                 assert all(isinstance(x, float) for x in packet.est_linear_accel)

@@ -1,0 +1,33 @@
+name: Pytest - Mock Parser
+
+on:
+    pull_request:
+      branches:
+        - '**'  # Matches all branch names, for PRs
+    push:
+      branches:
+        - 'main'  # Run tests on main branch
+jobs:
+    pytest:
+      name: pytest
+      runs-on: ${{ matrix.os }}
+      timeout-minutes: 5
+      strategy:
+        matrix:
+          os: [ubuntu-latest, ubuntu-24.04-arm]
+        fail-fast: False
+      steps:
+        - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+        - name: Install uv
+          uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+          with:
+            enable-cache: true
+            version: "0.9.16"
+
+        - name: Set up Python 3.13
+          run: uv python install 3.13
+
+        - name: Run tests for mock parser
+          run: |
+            uv run -p 3.13 pytest tests/test_mock_parser.py -v

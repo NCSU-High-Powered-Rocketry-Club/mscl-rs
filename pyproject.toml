@@ -30,7 +30,7 @@ classifiers = [
 # Rebuild package when any rust files change
 cache-keys = [{file = "pyproject.toml"}, {file = "Cargo.toml"}, {file = "**/*.rs"}]
 # Uncomment to build rust code in development mode (no optimizations, faster builds)
-# config-settings = { build-args = '--profile=dev' }
+config-settings = { build-args = '--profile=dev' }
 
 [dependency-groups]
 dev = [
@@ -40,6 +40,7 @@ dev = [
     "python-mscl; python_version <= '3.13'",
     "maturin",
     "ruff",
+    "pre-commit",
     "ziglang"  # for maturin's zig support when cross-compiling
 ]
 
@@ -53,3 +54,21 @@ build-backend = "maturin"
 # url = "https://test.pypi.org/simple/"
 # publish-url = "https://test.pypi.org/legacy/"
 # explicit = true
+
+# RUFF:
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+show-fixes = true
+exclude = ["examples"]
+
+[tool.ruff.lint]
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203", "ISC001", "S311",
+    "D102", "D103", "D104", "D107", "D205", "D401", "D200", "D203", "D212", "PYI021"]
+select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET", "RSE",
+    "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "Q", "INP",
+    "W", "YTT", "DTZ", "ARG", "T20", "FURB", "D100", "D101", "D300", "D418",
+    "D419", "S", "NPY", "D"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["T20", "S101", "D100", "ARG001", "RUF012"]

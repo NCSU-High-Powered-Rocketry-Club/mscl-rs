@@ -1,12 +1,21 @@
 """Benchmarks using the mscl library v/s the mscl_rs library."""
 
-from python_mscl import mscl
+import platform
+import time
+
+import msgspec
+import pytest
+
 import mscl_rs
 from mscl_rs import SerialParser
-import time
-import msgspec
-import platform
-import pytest
+
+if platform.python_version() >= "3.14":
+    pytest.skip(
+        "python-mscl does not support Python >= 3.14 yet. Use 3.13",
+        allow_module_level=True,
+    )
+
+from python_mscl import mscl
 
 ESTIMATED_DESCRIPTOR_SET = 130
 RAW_DESCRIPTOR_SET = 128
@@ -31,6 +40,8 @@ AMBIENT_PRESSURE_QUALIFIER = 58
 
 
 class RawDataPacket(msgspec.Struct):
+    """Packet structure for raw IMU data."""
+
     # scaledAccel units are in "g" (9.81 m/s^2)
     scaledAccelX: float | None = None
     scaledAccelY: float | None = None
@@ -51,6 +62,8 @@ class RawDataPacket(msgspec.Struct):
 
 
 class EstimatedDataPacket(msgspec.Struct):
+    """Packet structure for estimated IMU data."""
+
     estPressureAlt: float | None = None
     estOrientQuaternionW: float | None = None
     estOrientQuaternionX: float | None = None
@@ -66,15 +79,11 @@ class EstimatedDataPacket(msgspec.Struct):
     # estCompensatedAccel units are in m/s^2, including gravity
     estCompensatedAccelX: float | None = None
     estCompensatedAccelY: float | None = None
-    estCompensatedAccelZ: float | None = (
-        None  # this will be ~-9.81 m/s^2 when the IMU is at rest
-    )
+    estCompensatedAccelZ: float | None = None  # this will be ~-9.81 m/s^2 when the IMU is at rest
     # estLinearAccel units are in m/s^2, excluding gravity
     estLinearAccelX: float | None = None
     estLinearAccelY: float | None = None
-    estLinearAccelZ: float | None = (
-        None  # this will be ~0 m/s^2 when the IMU is at rest
-    )
+    estLinearAccelZ: float | None = None  # this will be ~0 m/s^2 when the IMU is at rest
     # estGravityVector units are in m/s^2
     estGravityVectorX: float | None = None
     estGravityVectorY: float | None = None
@@ -87,6 +96,8 @@ class EstimatedDataPacket(msgspec.Struct):
     reason="python-mscl does not support Python >= 3.14 yet",
 )
 class TestRealParser:
+    """Tests for the SerialParser class using a real IMU device."""
+
     port = "/dev/ttyACM0"  # The port where the IMU is connected to.
     time_to_wait_between_reads = 1  # seconds
     benchmark_time_s = 5  # seconds
@@ -111,24 +122,20 @@ class TestRealParser:
         start_bench_time = time.time()
 
         while time.time() - start_bench_time < self.benchmark_time_s:
-            time.sleep(
-                self.time_to_wait_between_reads
-            )  # Allow time for packets to accumulate
+            time.sleep(self.time_to_wait_between_reads)  # Allow time for packets to accumulate
             start_time = time.perf_counter()
             mscl_packets: mscl.MipDataPackets = node.getDataPackets(timeout=10)
             end_time = time.perf_counter()
 
             total_time_mscl = (end_time - start_time) * 1e3  # in milliseconds
             avg_parsing_times.append(total_time_mscl)
-            # print(
-            #     f"MSCL Packets received: {len(mscl_packets)}, Time taken: {total_time_mscl:.6f} ms"
-            # )
 
             packets_parsed_mscl += len(mscl_packets)
 
         avg_parsing_time_mscl = sum(avg_parsing_times) / len(avg_parsing_times)
         print(
-            f"MSCL parsed {packets_parsed_mscl} packets, with parsing {self.time_to_wait_between_reads * self.frequency_hz} "
+            f"MSCL parsed {packets_parsed_mscl} packets, with parsing "
+            f"{self.time_to_wait_between_reads * self.frequency_hz} "
             f"packets at a time taking {avg_parsing_time_mscl:.6f} ms."
         )
         connection.disconnect()
@@ -141,9 +148,7 @@ class TestRealParser:
         start_bench_time = time.time()
 
         while time.time() - start_bench_time < self.benchmark_time_s:
-            time.sleep(
-                self.time_to_wait_between_reads
-            )  # Allow time for packets to accumulate
+            time.sleep(self.time_to_wait_between_reads)  # Allow time for packets to accumulate
             start_time = time.perf_counter()
             rs_packets = parser.get_data_packets(block=True)
             end_time = time.perf_counter()
@@ -157,15 +162,16 @@ class TestRealParser:
             packets_parsed_rs += len(rs_packets)
         avg_parsing_time_rs = sum(avg_parsing_times_rs) / len(avg_parsing_times_rs)
         print(
-            f"mscl_rs parsed {packets_parsed_rs} packets, with parsing {self.time_to_wait_between_reads * self.frequency_hz} "
+            f"mscl_rs parsed {packets_parsed_rs} packets, with parsing "
+            f"{self.time_to_wait_between_reads * self.frequency_hz} "
             f"packets at a time taking {avg_parsing_time_rs:.6f} ms."
         )
         parser.stop()
 
         # Assert that both parsers parsed similar number of packets (within 10% tolerance)
-        assert (
-            abs(packets_parsed_rs - packets_parsed_mscl) < 0.1 * packets_parsed_mscl
-        ), "mscl_rs and mscl parsed different number of packets!"
+        assert abs(packets_parsed_rs - packets_parsed_mscl) < 0.1 * packets_parsed_mscl, (
+            "mscl_rs and mscl parsed different number of packets!"
+        )
         assert avg_parsing_time_rs < avg_parsing_time_mscl, (
             "mscl_rs parsing time is not faster than mscl parsing time!"
         )
@@ -204,9 +210,7 @@ class TestRealParser:
         # Compare values from both parsers
         # First get a estimated and raw packet from each parser
         raw_packet_rs = next(pkt for pkt in packets_rs if pkt.packet_type == "raw")
-        est_packet_rs = next(
-            pkt for pkt in packets_rs if pkt.packet_type == "estimated"
-        )
+        est_packet_rs = next(pkt for pkt in packets_rs if pkt.packet_type == "estimated")
         raw_packet_mscl = next(
             pkt for pkt in imu_data_packets_mscl if isinstance(pkt, RawDataPacket)
         )
@@ -234,15 +238,9 @@ class TestRealParser:
         assert raw_packet_rs.scaled_gyro[2] == pytest.approx(
             raw_packet_mscl.scaledGyroZ, abs=err_tol
         )
-        assert raw_packet_rs.delta_vel[0] == pytest.approx(
-            raw_packet_mscl.deltaVelX, abs=err_tol
-        )
-        assert raw_packet_rs.delta_vel[1] == pytest.approx(
-            raw_packet_mscl.deltaVelY, abs=err_tol
-        )
-        assert raw_packet_rs.delta_vel[2] == pytest.approx(
-            raw_packet_mscl.deltaVelZ, abs=err_tol
-        )
+        assert raw_packet_rs.delta_vel[0] == pytest.approx(raw_packet_mscl.deltaVelX, abs=err_tol)
+        assert raw_packet_rs.delta_vel[1] == pytest.approx(raw_packet_mscl.deltaVelY, abs=err_tol)
+        assert raw_packet_rs.delta_vel[2] == pytest.approx(raw_packet_mscl.deltaVelZ, abs=err_tol)
         assert raw_packet_rs.delta_theta[0] == pytest.approx(
             raw_packet_mscl.deltaThetaX, abs=err_tol
         )
@@ -388,10 +386,7 @@ class TestRealParser:
                     qualifier = data_point.qualifier()
                     field_name = data_point.field()
 
-                    if (
-                        field_name == EST_PRESSURE_ALT_FIELD
-                        and qualifier == PRESSURE_ALT_QUALIFIER
-                    ):
+                    if field_name == EST_PRESSURE_ALT_FIELD and qualifier == PRESSURE_ALT_QUALIFIER:
                         # Estimated pressure altitude
                         imu_data_packet.estPressureAlt = data_point.as_float()
 
@@ -413,18 +408,10 @@ class TestRealParser:
                     ):
                         # Estimated attitude uncertainty quaternion
                         matrix = data_point.as_Matrix()
-                        imu_data_packet.estAttitudeUncertQuaternionW = (
-                            matrix.as_floatAt(0, 0)
-                        )
-                        imu_data_packet.estAttitudeUncertQuaternionX = (
-                            matrix.as_floatAt(0, 1)
-                        )
-                        imu_data_packet.estAttitudeUncertQuaternionY = (
-                            matrix.as_floatAt(0, 2)
-                        )
-                        imu_data_packet.estAttitudeUncertQuaternionZ = (
-                            matrix.as_floatAt(0, 3)
-                        )
+                        imu_data_packet.estAttitudeUncertQuaternionW = matrix.as_floatAt(0, 0)
+                        imu_data_packet.estAttitudeUncertQuaternionX = matrix.as_floatAt(0, 1)
+                        imu_data_packet.estAttitudeUncertQuaternionY = matrix.as_floatAt(0, 2)
+                        imu_data_packet.estAttitudeUncertQuaternionZ = matrix.as_floatAt(0, 3)
 
                     elif field_name == EST_ANGULAR_RATE_FIELD:
                         # Estimated angular rate
