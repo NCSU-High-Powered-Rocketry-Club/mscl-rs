@@ -94,24 +94,22 @@ def main():
                 # pkt.scaled_accel, pkt.scaled_gyro, etc.
                 t_end_struct = time.perf_counter_ns()
 
-                dt_ms = 0.0
                 if last_raw_ts is not None:
-                    dt_ms = (ts - last_raw_ts) / 1e6
+                    (ts - last_raw_ts) / 1e6
                 last_raw_ts = ts
 
-                parse_ms = (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
+                (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
                 # print(f"Raw interval: {dt_ms:.3f} ms | Parse: {parse_ms:.6f} ms")
 
             elif packet_type == "estimated":
                 # Access estimated fields directly
                 t_end_struct = time.perf_counter_ns()
 
-                dt_ms = 0.0
                 if last_est_ts is not None:
-                    dt_ms = (ts - last_est_ts) / 1e6
+                    (ts - last_est_ts) / 1e6
                 last_est_ts = ts
 
-                parse_ms = (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
+                (avg_rust_ns + (t_end_struct - t_start_struct)) / 1e6
                 # print(f"Estimated interval: {dt_ms:.3f} ms | Parse: {parse_ms:.6f} ms")
                 # print(f"Alt: {pkt.est_pressure_alt:.3f} m")
                 # print(f"Orient (quat): {pkt.est_orient_quaternion}")

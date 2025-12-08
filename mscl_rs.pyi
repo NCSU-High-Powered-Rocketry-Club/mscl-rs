@@ -145,14 +145,14 @@ class SerialParser:
     :return: True if the parser is running, False otherwise.
     """
 
-    def __enter__(self) -> "SerialParser": ...
+    def __enter__(self) -> SerialParser: ...  # noqa: PYI034
     """
     Context manager entry. Opens the serial port and starts the parser thread.
     """
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None, 
+        exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None: ...
@@ -170,9 +170,7 @@ class MockParser:
     :param timeout: The read timeout for the mock dataset file in seconds. Defaults to 0.1 seconds.
     """
 
-    def __init__(
-        self, path: pathlib.Path | str, timeout: float | None = 0.1
-    ) -> None: ...
+    def __init__(self, path: pathlib.Path | str, timeout: float | None = 0.1) -> None: ...
     def start(self) -> None: ...
     """
     Start the parser thread to read data from the mock dataset file.
@@ -203,14 +201,14 @@ class MockParser:
     :return: True if the parser is running, False otherwise.
     """
 
-    def __enter__(self) -> "MockParser": ...
+    def __enter__(self) -> MockParser: ...  # noqa: PYI034
     """
     Context manager entry. Opens the mock dataset file and starts the parser thread.
     """
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None, 
+        exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None: ...
